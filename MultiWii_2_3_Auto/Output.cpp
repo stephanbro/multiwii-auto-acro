@@ -1010,6 +1010,9 @@ int16_t get_middle(uint8_t nr) {
 
 void mixTable() {
   int16_t maxMotor;
+  #if defined(MULTIWII3D)
+    int16_t minMotor;
+  #endif
   uint8_t i;
   #if defined(DYNBALANCE)
     return;
@@ -1036,10 +1039,17 @@ void mixTable() {
     motor[2] = PIDMIX(+1, 0,+1); //LEFT
     motor[3] = PIDMIX( 0,-1,-1); //FRONT
   #elif defined( QUADX )
-    motor[0] = PIDMIX(-1,+1,-1); //REAR_R
-    motor[1] = PIDMIX(-1,-1,+1); //FRONT_R
-    motor[2] = PIDMIX(+1,+1,+1); //REAR_L
-    motor[3] = PIDMIX(+1,-1,-1); //FRONT_L
+    #if defined(MULTIWII3D)
+      motor[0] = PIDMIX(-1/2,+1/2,-1/2); //REAR_R
+      motor[1] = PIDMIX(-1/2,-1/2,+1/2); //FRONT_R
+      motor[2] = PIDMIX(+1/2,+1/2,+1/2); //REAR_L
+      motor[3] = PIDMIX(+1/2,-1/2,-1/2); //FRONT_L
+    #else
+      motor[0] = PIDMIX(-1,+1,-1); //REAR_R
+      motor[1] = PIDMIX(-1,-1,+1); //FRONT_R
+      motor[2] = PIDMIX(+1,+1,+1); //REAR_L
+      motor[3] = PIDMIX(+1,-1,-1); //FRONT_L
+    #endif
   #elif defined( Y4 )
     motor[0] = PIDMIX(+0,+1,-1);   //REAR_1 CW
     motor[1] = PIDMIX(-1,-1, 0); //FRONT_R CCW
@@ -1418,18 +1428,36 @@ void mixTable() {
     }
   #endif
   /****************                normalize the Motors values                ******************/
-    maxMotor=motor[0];
-    for(i=1; i< NUMBER_MOTOR; i++)
+    #if defined(MULTIWII3D)
+      maxMotor=minMotor=motor[0];
+    #else
+      maxMotor=motor[0];
+    #endif
+    for(i=1; i< NUMBER_MOTOR; i++) {
       if (motor[i]>maxMotor) maxMotor=motor[i];
+      #if defined(MULTIWII3D)
+        if (motor[i]<minMotor) minMotor=motor[i];
+      #endif
+    }
     for(i=0; i< NUMBER_MOTOR; i++) {
       if (maxMotor > MAXTHROTTLE) // this is a way to still have good gyro corrections if at least one motor reaches its max.
         motor[i] -= maxMotor - MAXTHROTTLE;
-      motor[i] = constrain(motor[i], conf.minthrottle, MAXTHROTTLE);
-      if ((rcData[THROTTLE] < MINCHECK) && !f.BARO_MODE)
-      #ifndef MOTOR_STOP
-        motor[i] = conf.minthrottle;
+      #if defined(MULTIWII3D)
+        else if (minMotor < MINTHROTTLE)
+          motor[i] += MINTHROTTLE - minMotor;
+
+        if (rcData[THROTTLE] >= 1500)
+          motor[i] = constrain(motor[i], MIN_FWD_THROTTLE, MAXTHROTTLE);
+        else
+          motor[i] = constrain(motor[i], MINTHROTTLE, MIN_REV_THROTTLE);
       #else
-        motor[i] = MINCOMMAND;
+        motor[i] = constrain(motor[i], conf.minthrottle, MAXTHROTTLE);
+        if ((rcData[THROTTLE] < MINCHECK) && !f.BARO_MODE)
+        #ifndef MOTOR_STOP
+          motor[i] = conf.minthrottle;
+        #else
+          motor[i] = MINCOMMAND;
+        #endif
       #endif
       if (!f.ARMED)
         motor[i] = MINCOMMAND;

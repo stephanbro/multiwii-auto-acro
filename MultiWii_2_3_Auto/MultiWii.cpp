@@ -954,7 +954,13 @@ void loop () {
   static uint8_t varioRate = 0;
   static int8_t  altToTargetEnable = 0;
   static int8_t  autoLandEnable = 0;
-
+  
+  #if defined(MULTIWII3D)
+    // Allow disarm at any time
+    if (!rcOptions[BOXARM])
+      f.ARMED = 0;
+  #endif
+  
   if (currentTime > rcTime ) { // 50Hz
     rcTime = currentTime + 20000;
     computeRC();
@@ -1122,7 +1128,11 @@ void loop () {
       
     
     // perform actions    
+    #if defined(MULTIWII3D)
+    if (rcData[THROTTLE] >= 1450 && rcData[THROTTLE] <= 1550) { // MultiWii 3D THROTTLE at minimum
+    #else
     if (rcData[THROTTLE] <= MINCHECK) {            // THROTTLE at minimum
+    #endif
       #if !defined(FIXEDWING)
         errorGyroI[ROLL] = 0; errorGyroI[PITCH] = 0;
         #if PID_CONTROLLER == 1
