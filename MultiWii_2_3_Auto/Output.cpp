@@ -1446,7 +1446,9 @@ void mixTable() {
         else if (minMotor < MINTHROTTLE)
           motor[i] += MINTHROTTLE - minMotor;
 
-        if (rcData[THROTTLE] >= 1500)
+        if (rcData[THROTTLE] <= 1550 && rcData[THROTTLE] >= 1450)
+          motor[i] = MINCOMMAND;
+        else if (rcData[THROTTLE] >= 1500)
           motor[i] = constrain(motor[i], MIN_FWD_THROTTLE, MAXTHROTTLE);
         else
           motor[i] = constrain(motor[i], MINTHROTTLE, MIN_REV_THROTTLE);
